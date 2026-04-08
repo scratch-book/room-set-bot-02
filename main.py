@@ -53,13 +53,6 @@ def build_keyboard():
                     [
                         {
                             "type": "link",
-                            "text": "Контакты: +7 (950) 730-72-02",
-                            "url": PHONE_URL,  # tel:+79507307202; если не работает, заменить на CONTACTS_URL
-                        }
-                    ],
-                    [
-                        {
-                            "type": "link",
                             "text": "Адрес шоурума",
                             "url": MAP_URL,
                         }
