@@ -98,15 +98,29 @@ def health():
 async def webhook(req: Request):
     if not TOKEN:
         raise HTTPException(status_code=500, detail="MAX_TOKEN is missing")
-
     try:
         body = await req.json()
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
     logging.info("INCOMING_UPDATE: %s", json.dumps(body, ensure_ascii=False))
-
     update_type = body.get("update_type") or body.get("type")
+
+    # Пытаемся вытащить chat_id из всех возможных мест
+    def extract_chat_id(b):
+        return (
+            (b.get("chat") or {}).get("chat_id")
+            or b.get("chat_id")
+            or ((b.get("message") or {}).get("recipient") or {}).get("chat_id")
+            or ((b.get("message") or {}).get("chat") or {}).get("chat_id")
+        )
+
+    # События старта бота в МАКС: bot_started / bot_added / chat_member_added
+    if update_type in ("bot_started", "bot_added", "chat_member_added", "message_chat_created"):
+        chat_id = extract_chat_id(body)
+        if chat_id:
+            send_message(chat_id, WELCOME_TEXT)
+        return {"ok": True}
 
     if update_type == "message_created":
         message = body.get("message") or {}
@@ -114,12 +128,10 @@ async def webhook(req: Request):
         chat_id = recipient.get("chat_id")
         text = ((message.get("body") or {}).get("text") or "").strip().lower()
 
-        if chat_id and text in ("/start", "/старт"):
-            send_message(chat_id, WELCOME_TEXT)
-
-    elif update_type == "bot_started":
-        chat_id = (body.get("chat") or {}).get("chat_id")
+        # Любое первое сообщение пользователя тоже триггерит приветствие,
+        # не только /start
         if chat_id:
-            send_message(chat_id, WELCOME_TEXT)
+            if text in ("/start", "/старт") or text:
+                send_message(chat_id, WELCOME_TEXT)
 
     return {"ok": True}
